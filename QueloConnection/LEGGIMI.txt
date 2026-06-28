@@ -1,0 +1,265 @@
+================================================================================
+  nossh — Release pubblica (QueloConnection)
+  SSH verso macchine Linux senza IP pubblico
+================================================================================
+
+  Autore:  Alberto Frosio
+  Email:   alby@gnumerica.org
+  Licenza: Uso libero NON commerciale (vedi file LICENSE)
+
+  Questo pacchetto permette di installare il TUO server ponte e collegare
+  le TUE macchine Linux, su infrastruttura di tua proprieta'.
+  Non e' legato a server o account di terzi.
+
+
+================================================================================
+  COS'E' nossh
+================================================================================
+
+  nossh collega tre componenti:
+
+    [Macchina remota]  --agent-->  [Server ponte]  <--client--  [Utente SSH]
+
+  - La macchina remota (senza IP pubblico) si connette IN USCITA al ponte.
+  - L'amministratore del ponte assegna un NOME alla macchina.
+  - L'utente finale si connette con:  connect-NOMEMACHINA
+    (username e password Linux della macchina remota).
+
+  Non serve desktop remoto (TeamViewer, RustDesk, ecc.): solo SSH.
+
+
+================================================================================
+  REQUISITI DI SISTEMA
+================================================================================
+
+  SERVER PONTE (VPS con IP fisso, es. Debian)
+  -------------------------------------------
+  - Linux amd64 o arm64
+  - systemd (consigliato)
+  - Porte TCP in ingresso: 4443 (agent), 7000 (client SSH)
+  - 512 MB RAM sufficienti per pochi agent
+  - Non richiede Go se usi i binari precompilati in bin/
+
+  MACCHINA REMOTA (da raggiungere via SSH)
+  ----------------------------------------
+  - Linux con systemd (consigliato)
+  - sshd attivo sulla porta 22
+  - Connessione internet in uscita verso il ponte (porta 4443)
+  - Utenti Linux con username/password (o chiavi SSH)
+
+  PC CLIENT (chi si connette)
+  ---------------------------
+  - Linux con openssh-client (comando ssh)
+  - Connessione internet verso il ponte (porta 7000)
+  - Non serve root per l'installazione client
+
+
+================================================================================
+  CONTENUTO DI QUESTA CARTELLA
+================================================================================
+
+  bin/                    Binari precompilati (nossh-server, nossh-agent, nossh)
+  quelo-connect-gui_*.deb Pacchetto GUI GTK opzionale (Quelo Connect)
+  deploy/                 Esempio config e unit systemd
+  scripts/                Script di installazione
+  client-package/         Modello per creare pacchetti client da distribuire
+  LEGGIMI-GUI.txt         Istruzioni per la GUI .deb
+  LICENSE                 Licenza d'uso
+  LEGGIMI.txt             Questo file
+
+
+================================================================================
+  PANORAMICA — 4 PASSI
+================================================================================
+
+  1. Installi il SERVER PONTE sul tuo VPS
+  2. Installi l'AGENT su ogni macchina remota da raggiungere
+  3. Assegni un NOME a ogni macchina (da admin sul ponte)
+  4. Distribuisci il CLIENT agli utenti che devono entrare via SSH
+
+
+================================================================================
+  PASSO 1 — SERVER PONTE
+================================================================================
+
+  Sul tuo VPS (come root o con sudo):
+
+    cd QueloConnection
+    sudo bash scripts/install-server.sh
+
+  Configura i token segreti:
+
+    sudo nano /etc/nossh/server.yaml
+
+  Genera due token casuali (sul tuo PC):
+
+    openssl rand -hex 32
+    openssl rand -hex 32
+
+  Inseriscili in server.yaml:
+    install_token  → per installare gli agent
+    admin_token    → per comandi admin (list, name, ...)
+
+  Avvia il servizio:
+
+    sudo systemctl enable --now nossh-server
+    sudo systemctl status nossh-server
+
+  Verifica porte in ascolto:
+
+    sudo ss -tlnp | grep -E ':4443|:7000|:8081'
+
+  FIREWALL: apri TCP 4443 e 7000 nel firewall del VPS (pannello provider
+  e/o iptables). La porta 8081 resta solo localhost (admin).
+
+  Installa anche il client admin sul ponte:
+
+    sudo install -m 755 bin/nossh /usr/local/bin/nossh
+
+  Per i comandi admin:
+
+    export NOSSH_ADMIN_TOKEN="il-tuo-admin-token"
+    nossh list
+
+
+================================================================================
+  PASSO 2 — AGENT (macchina remota)
+================================================================================
+
+  Copia nossh-agent sulla macchina remota, poi:
+
+    sudo bash scripts/install-agent.sh \
+      --server IP-DEL-TUO-PONTE:4443 \
+      --token IL-TUO-INSTALL-TOKEN
+
+  Annota il CODICE MACCHINA mostrato (es. KITE-7X4M).
+
+  Verifica:
+
+    sudo systemctl status nossh-agent
+    sudo nossh-agent status
+
+  Test connettivita' verso il ponte (dalla macchina remota):
+
+    nc -zv -w 5 IP-DEL-TUO-PONTE 4443
+
+
+================================================================================
+  PASSO 3 — ASSEGNA IL NOME (sul server ponte)
+================================================================================
+
+    export NOSSH_ADMIN_TOKEN="il-tuo-admin-token"
+    nossh list
+
+  Vedrai la macchina in stato "pending". Assegna un nome:
+
+    nossh name CODICE-MACCHINA nome-scelto
+
+  Esempio:
+
+    nossh name KITE-7X4M ufficio-server
+
+  Verifica:
+
+    nossh list
+
+  STATUS=active, ONLINE=yes → pronta per le connessioni.
+
+
+  Altri comandi admin:
+
+    nossh rename vecchio-nome nuovo-nome
+    nossh revoke nome-macchina
+    nossh delete CODICE-MACCHINA
+
+
+================================================================================
+  PASSO 4 — CLIENT per gli utenti finali
+================================================================================
+
+  Sul PC dove hai i binari, crea lo zip da inviare:
+
+    bash scripts/pack-client.sh --server IP-PONTE:7000 --machine nome-scelto
+
+  Oppure manualmente: metti in una cartella install-client.sh, nossh e
+  LEGGIMI.txt (vedi client-package/LEGGIMI.txt), poi zip.
+
+  L'utente finale:
+
+    unzip nossh-client.zip
+    cd nossh-client
+    bash install-client.sh --server IP-PONTE:7000 --machine nome-scelto
+    connect-nome-scelto
+
+  IMPORTANTE: l'installazione client NON usa sudo.
+
+  Opzionale — GUI grafica (dopo install-client.sh):
+
+    sudo apt install ./quelo-connect-gui_0.1.0-beta_amd64.deb
+
+  Avvio dal menu "Quelo Connect" o con:  quelo-connect-gui
+  Dettagli in LEGGIMI-GUI.txt
+
+
+================================================================================
+  PORTE UTILIZZATE
+================================================================================
+
+  4443   Agent → ponte (connessione persistente in uscita dalle macchine)
+  7000   Client → ponte (SSH degli utenti)
+  8081   Admin API (solo 127.0.0.1 sul ponte — non esporre su internet)
+
+
+================================================================================
+  PIU' UTENTI E PIU' MACCHINE
+================================================================================
+
+  - Piu' utenti possono connettersi alla stessa macchina contemporaneamente
+    (ognuno con il proprio account Linux).
+  - Piu' macchine: ripeti il PASSO 2 e PASSO 3 per ciascuna.
+  - Ogni macchina ha un codice univoco all'installazione agent.
+
+
+================================================================================
+  RISOLUZIONE PROBLEMI
+================================================================================
+
+  Agent: "i/o timeout"
+    → Porta 4443 chiusa nel firewall del VPS o rete remota.
+    → Test: nc -zv IP-PONTE 4443 dalla macchina remota.
+
+  nossh list vuoto
+    → Agent non connesso o install_token errato.
+    → Controlla: journalctl -u nossh-agent -n 20
+
+  Client: timeout su connect
+    → Apri porta 7000 sul firewall del VPS.
+
+  Permission denied (SSH)
+    → Username/password errati sulla macchina remota.
+    → Verifica PasswordAuthentication in /etc/ssh/sshd_config.
+
+  install-client.sh con sudo
+    → NON usare sudo. Reinstalla con: bash install-client.sh ...
+
+
+================================================================================
+  COMPILARE DA SORGENTE
+================================================================================
+
+  Se preferisci compilare tu stesso i binari, usa la cartella SOURCE_CODE
+  e segui SOURCE_CODE/LEGGIMI.txt.
+
+
+================================================================================
+  LICENZA E CONTATTI
+================================================================================
+
+  Uso libero per scopi NON commerciali.
+  Uso commerciale vietato senza autorizzazione scritta.
+
+  Alberto Frosio — alby@gnumerica.org
+
+  Vedi LICENSE per il testo completo.
+
+================================================================================

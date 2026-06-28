@@ -1,0 +1,64 @@
+================================================================================
+  quelo-connect-gui — Sorgente GUI (GTK3 / Go)
+================================================================================
+
+  Mini finestra grafica per connettersi via nossh. Richiede il client nossh
+  già installato (install-client.sh) e ~/.config/nossh/client.conf.
+
+  Autore: Alberto Frosio — alby@gnumerica.org
+  Versione: 0.1.0-beta
+
+
+================================================================================
+  REQUISITI PER COMPILARE
+================================================================================
+
+  - Go 1.22 o superiore
+  - libgtk-3-dev, gcc, pkg-config
+  - gotk3@master (già in go.mod; v0.6.4 non compila con Go 1.24+)
+
+  sudo apt install libgtk-3-dev gcc pkg-config
+
+
+================================================================================
+  COMPILAZIONE .deb
+================================================================================
+
+  Dalla cartella SOURCE_CODE/Gui:
+
+    go mod tidy
+    make gui-deb
+
+  Output: dist/quelo-connect-gui_0.1.0-beta_amd64.deb
+
+
+================================================================================
+  STRUTTURA
+================================================================================
+
+  cmd/quelo-connect-gui/   finestra GTK (istanza singola GtkApplication)
+  internal/launcher/       avvio terminale per SSH
+  internal/configfile/     client.conf e elenco macchine salvate
+  internal/client/         verifica nome macchina sul ponte (CHECK)
+  packaging/               metadati .deb e .desktop
+  scripts/build-gui-deb.sh
+
+
+================================================================================
+  INSTALLAZIONE (utente finale)
+================================================================================
+
+  sudo apt install ./quelo-connect-gui_0.1.0-beta_amd64.deb
+
+  Menu applicazioni: "Quelo Connect"  oppure  quelo-connect-gui
+
+
+================================================================================
+  LICENZA
+================================================================================
+
+  Uso libero NON commerciale. Uso commerciale vietato senza autorizzazione.
+
+  Alberto Frosio — alby@gnumerica.org
+
+================================================================================

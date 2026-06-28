@@ -1,0 +1,55 @@
+nossh — SSH bridge without public IP
+Copyright (c) 2026 Alberto Frosio <alby@gnumerica.org>
+
+================================================================================
+LICENZA DI USO — Uso libero NON commerciale
+================================================================================
+
+E' consentito, gratuitamente, a chiunque:
+
+  - utilizzare, copiare, modificare e ridistribuire questo software;
+  - installarlo su propri server e proprie macchine;
+  - condividerlo con altri per scopi personali, domestici, associativi,
+    educativi o interni (non a scopo di lucro),
+
+a condizione che:
+
+  1. siano mantenuti questo avviso di copyright e la presente licenza;
+  2. sia indicato l'autore originale (Alberto Frosio);
+  3. eventuali opere derivate riportino chiaramente le modifiche apportate.
+
+================================================================================
+USO COMMERCIALE — Vietato senza autorizzazione
+================================================================================
+
+E' ESPRESSAMENTE VIETATO, senza previa autorizzazione scritta dell'autore:
+
+  - vendere, affittare o concedere in sublicenza il software;
+  - utilizzarlo come componente di un prodotto o servizio a pagamento;
+  - offrirlo come servizio commerciale (SaaS, hosting gestito a pagamento,
+    consulenza commerciale che include il software senza accordo);
+  - rimuovere o alterare i riferimenti all'autore e alla licenza.
+
+Per licenze commerciali o accordi di utilizzo professionale, contattare:
+
+  Alberto Frosio
+  alby@gnumerica.org
+
+================================================================================
+ESCLUSIONE DI GARANZIA
+================================================================================
+
+IL SOFTWARE E' FORNITO "COSI' COM'E'", SENZA GARANZIE DI ALCUN TIPO,
+ESPRESSE O IMPLICITE, INCLUSO MA NON LIMITATO A GARANZIE DI COMMERCIABILITA',
+IDONEITA' A UN PARTICOLARE SCOPO E NON VIOLAZIONE.
+
+IN NESSUN CASO L'AUTORE SARA' RESPONSABILE PER DANNI DIRETTI, INDIRETTI,
+INCIDENTALI O CONSEQUENZIALI DERIVANTI DALL'USO DEL SOFTWARE.
+
+================================================================================
+English summary (non binding)
+================================================================================
+
+Free for personal, educational, and non-commercial use. Modification and
+redistribution allowed with attribution. Commercial use requires written
+permission from Alberto Frosio (alby@gnumerica.org).

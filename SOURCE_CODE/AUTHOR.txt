@@ -1,0 +1,13 @@
+nossh
+
+Autore: Alberto Frosio
+Email:  alby@gnumerica.org
+
+Software per accesso SSH a macchine Linux senza IP pubblico,
+mediante server ponte self-hosted.
+
+Licenza: uso libero NON commerciale. Vedi LICENSE.
+
+Cartelle:
+  QueloConnection/   Release pronta con binari e istruzioni installazione
+  SOURCE_CODE/         Codice sorgente completo per compilazione autonoma

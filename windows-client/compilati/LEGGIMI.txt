@@ -1,0 +1,115 @@
+================================================================================
+  nossh — Client portable per Windows
+================================================================================
+
+  Autore: Alberto Frosio — alby@gnumerica.org
+  Licenza: uso libero NON commerciale (vedi LICENSE nel pacchetto principale)
+
+
+================================================================================
+  COSA FA
+================================================================================
+
+  Client portatile da chiavetta USB o cartella locale: nessuna installazione,
+  niente PATH, niente file in AppData (se usi questa cartella come base).
+
+  Si connette via SSH a una macchina Linux registrata sul server ponte nossh,
+  senza conoscere l'IP della macchina remota.
+
+
+================================================================================
+  REQUISITI
+================================================================================
+
+  - Windows 10 o 11 (64 bit)
+  - OpenSSH Client (di solito gia' presente)
+    Impostazioni → App → Funzionalità opzionali → "OpenSSH Client"
+  - Connessione internet verso il server ponte (porta TCP 7000)
+  - Username e password Linux sulla macchina remota
+
+
+================================================================================
+  CONTENUTO CARTELLA
+================================================================================
+
+  nossh.exe              Client nossh (portable)
+  quelo-connect.exe      Mini GUI nativa Windows (senza OpenGL)
+  connect-gui.bat        Avvia la GUI
+  client.conf            Configurazione (server + nome macchina)
+  client.conf.example    Modello da copiare
+  connect.bat            Avvia connessione in finestra CMD
+  LEGGIMI.txt            Questo file
+  .nossh/                Creata al primo uso (chiavi SSH note)
+
+
+================================================================================
+  PRIMO AVVIO
+================================================================================
+
+  1) Copia l'intera cartella su USB o PC (es. D:\nossh-client\)
+
+  2) Modifica client.conf:
+
+       server=IP-PONTE:7000
+       machine=nome-macchina
+
+  3) Doppio clic su connect-gui.bat (GUI) oppure connect.bat (solo terminale)
+
+  4) Nella GUI: server ponte, macchina, username → Connetti
+
+
+================================================================================
+  PERCHE' PORTABLE
+================================================================================
+
+  - Non richiede installazione ne' diritti amministratore
+  - Tutto resta nella cartella (config + known_hosts in .nossh\)
+  - Utile su PC aziendali dove non si possono installare programmi
+  - L'eseguibile non e' firmato: Windows puo' mostrare SmartScreen al primo
+    avvio ("Altre informazioni" → "Esegui comunque"). Non e' un blocco
+    dell'installazione, solo un avviso su file scaricati.
+
+
+================================================================================
+  USO DA RIGA DI COMANDO
+================================================================================
+
+  Apri cmd nella cartella:
+
+    nossh.exe -server IP-PONTE:7000 connect nome-macchina utente
+
+  GUI portable:
+
+    quelo-connect.exe
+    connect-gui.bat
+
+  Il comando proxy e' usato internamente da OpenSSH.
+
+
+================================================================================
+  RISOLUZIONE PROBLEMI
+================================================================================
+
+  "ssh non trovato"
+    → Abilita OpenSSH Client nelle funzionalita' opzionali di Windows.
+
+  Timeout / connessione rifiutata
+    → Verifica IP ponte, porta 7000, firewall.
+
+  Permission denied
+    → Username o password Linux errati sulla macchina remota.
+
+  SmartScreen blocca nossh.exe
+    → Altro → Esegui comunque (file non firmato, normale per portable).
+
+  Errore OpenGL / Fyne (versione vecchia)
+    → Usa il quelo-connect.exe aggiornato (interfaccia Win32 nativa, non richiede OpenGL).
+
+
+================================================================================
+  SORGENTE
+================================================================================
+
+  Per compilare: cartella windows/SOURCE_CODE/ (vedi LEGGIMI.txt).
+
+================================================================================

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Quelo Connect
+Comment=Connessione SSH via nossh
+Exec=quelo-connect-gui
+Icon=quelo-connect-gui
+Terminal=false
+Type=Application
+Categories=Network;RemoteAccess;
+StartupNotify=false

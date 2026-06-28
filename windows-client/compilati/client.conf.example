@@ -1,0 +1,7 @@
+# nossh client portable — copia in client.conf e compila i valori
+# Oppure usa Quelo Connect → Opzioni → Configura server
+
+host=
+port=7000
+token=
+machine=

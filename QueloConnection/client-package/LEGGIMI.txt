@@ -1,0 +1,59 @@
+================================================================================
+  nossh — Pacchetto client (istruzioni per l'utente finale)
+================================================================================
+
+  Sostituisci nei comandi:
+    IP-PONTE      → indirizzo del server ponte (fornito dall'admin)
+    NOME-MACCHINA → nome assegnato dall'admin (es. ufficio-server)
+
+
+================================================================================
+  REQUISITI
+================================================================================
+
+  - PC con Linux (Debian, Ubuntu, Mint, ...)
+  - Connessione internet
+  - openssh-client (comando ssh)
+  - Username e password Linux sulla macchina remota (forniti dall'admin)
+
+  Opzionale — mini GUI GTK (pacchetto .deb separato):
+  quelo-connect-gui
+
+
+================================================================================
+  INSTALLAZIONE (prima volta)
+================================================================================
+
+  1) Estrai lo zip:
+
+       unzip nossh-client.zip
+       cd nossh-client
+
+  2) Installa (SENZA sudo):
+
+       bash install-client.sh --server IP-PONTE:7000 --machine NOME-MACCHINA
+
+  3) Apri un nuovo terminale oppure:  source ~/.bashrc
+
+
+================================================================================
+  CONNESSIONE
+================================================================================
+
+  Terminale:
+
+       connect-NOME-MACCHINA
+
+  Dalla cartella estratta:  ./connect-NOME-MACCHINA
+
+  Mini GUI (pacchetto .deb opzionale):  quelo-connect-gui
+
+
+================================================================================
+  AUTORE E LICENZA
+================================================================================
+
+  nossh — Alberto Frosio — alby@gnumerica.org
+  Uso libero NON commerciale. Vedi LICENSE.
+
+================================================================================

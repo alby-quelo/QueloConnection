@@ -1,0 +1,11 @@
+listen_addr: "0.0.0.0"
+agent_port: 4443
+client_port: 7000
+admin_port: 8081
+data_dir: "/var/lib/nossh"
+
+# Token used by agents during installation (keep secret).
+install_token: "CHANGE-ME-install-token"
+
+# Token for admin API / nossh list|name|... (keep secret).
+admin_token: "CHANGE-ME-admin-token"

@@ -1,0 +1,314 @@
+================================================================================
+  nossh — Agent Windows (Quelo Connect)
+================================================================================
+
+  Collega un PC Windows al server ponte senza IP pubblico e senza aprire porte
+  sul router. Chi si connette ottiene cmd o PowerShell via SSH (no desktop).
+
+  Struttura pacchetto:
+    ESEGUIBILI/     file da copiare sul PC Windows (uso normale)
+    SOURCE_CODE/    sorgente Go per ricompilare nossh-agent.exe
+    LEGGIMI.txt     questo file
+
+  PREREQUISITO: server ponte con nossh-server attivo.
+  Manuale completo ponte: QueloConnection/LEGGIMI.txt
+  Pannello admin web (opzionale): cartella web/ + web/LEGGIMI.txt
+
+================================================================================
+  COME FUNZIONA
+================================================================================
+
+    [PC Windows]  --agent (uscita)-->  [Server ponte]  <--  [Chi si connette]
+         |                                  |
+    OpenSSH :22                         inoltra SSH
+    (solo 127.0.0.1)                    al agent
+
+  - nossh-agent.exe si connette IN USCITA al ponte (porta 4443).
+  - OpenSSH Server ascolta SOLO su 127.0.0.1:22 (non esposto su LAN/internet).
+  - L'agent inoltra il traffico SSH dal ponte a OpenSSH locale.
+  - Login SSH: username e password di un account Windows (con password impostata).
+
+  Non serve port forwarding della 22 sul router del PC Windows.
+
+================================================================================
+  CONTENUTO CARTELLA ESEGUIBILI
+================================================================================
+
+    nossh-agent.exe       agent (connessione in uscita al ponte) — deve essere
+                          presente nella stessa cartella; si ottiene dal release
+                          zip o ricompilando da SOURCE_CODE (vedi sotto)
+    install-agent.bat     installazione guidata (doppio clic come Admin)
+    install-agent.ps1     script PowerShell installazione
+    install-openssh.ps1   script OpenSSH (chiamato da install-agent)
+    uninstall-agent.bat   disinstallazione per reinstallazione pulita
+    uninstall-agent.ps1   script disinstallazione
+
+================================================================================
+  PRIMA DI INIZIARE — DATI CHE SERVONO
+================================================================================
+
+  Sul server ponte (da /etc/nossh/server.yaml o dall'amministratore):
+
+    install_token   per registrare l'agent sul PC Windows
+    IP o hostname   del server ponte (es. 87.106.255.178)
+    Porta agent     di solito 4443
+
+  Sul PC Windows:
+
+    - Windows 10 / 11 o Windows Server, 64 bit
+    - Connessione internet in USCITA verso il ponte (porta 4443)
+    - Esecuzione installazione come Amministratore
+    - Account Windows con password per il login SSH (vedi sezione UTENTE SSH)
+
+================================================================================
+  INSTALLAZIONE — PASSO PASSO
+================================================================================
+
+  PASSO 1 — Copia la cartella ESEGUIBILI sul PC Windows
+  ------------------------------------------------------
+
+  PASSO 2 — (Solo reinstallazione) Disinstalla la versione precedente
+  -------------------------------------------------------------------
+  Tasto destro su uninstall-agent.bat → Esegui come amministratore.
+
+  Per reset completo (include config OpenSSH dell'installer):
+    uninstall-agent.bat full
+
+  PASSO 3 — Installa
+  ------------------
+  Tasto destro su install-agent.bat → Esegui come amministratore.
+
+  Installazione non interattiva (PowerShell come Admin, dalla cartella ESEGUIBILI):
+
+    powershell -ExecutionPolicy Bypass -File .\install-agent.ps1 `
+      -BridgeHost IP-PONTE -BridgePort 4443 -Token "install-token"
+
+  Oppure host:porta in un solo parametro:
+
+    powershell -ExecutionPolicy Bypass -File .\install-agent.ps1 `
+      -Server "IP-PONTE:4443" -Token "install-token"
+
+  Lo script interattivo chiede:
+    a) IP o hostname del server ponte
+    b) Porta agent sul ponte [4443]  (Invio = default 4443)
+    c) Install token  (incolla con Ctrl+V, poi Invio)
+
+  Cosa fa l'installer (attendi, puo richiedere diversi minuti):
+    - Verifica connessione TCP verso il ponte
+    - Installa OpenSSH Server (winget oppure Windows Capability)
+    - Crea/configura sshd_config (solo 127.0.0.1, password utenti Windows)
+    - Avvia servizio sshd
+    - Installa nossh-agent in C:\Program Files\nossh\
+    - Crea config in C:\ProgramData\nossh\agent.yaml
+    - Registra e avvia servizio Windows nossh-agent
+    - Mostra esito e CODICE AGENT
+
+  PASSO 4 — Annota il CODICE AGENT
+  --------------------------------
+  Esempio: 6FCU-EG65
+
+  Messaggi possibili a fine installazione:
+    INSTALLAZIONE COMPLETATA CON SUCCESSO  — tutto ok (agent, sshd, TCP ponte)
+    INSTALLAZIONE OK (verifica rete ponte) — agent e sshd ok, TCP ponte fallito
+    INSTALLAZIONE PARZIALE - CONTROLLA TOKEN — servizio agent non resta attivo
+    INSTALLAZIONE CON ERRORI                 — altro problema (es. sshd)
+
+  PASSO 5 — Assegna nome macchina (sul server ponte)
+  --------------------------------------------------
+  Da terminale sul ponte:
+
+    export NOSSH_ADMIN_TOKEN=...
+    nossh name CODICE nome-macchina
+
+  Oppure dal pannello web admin (cartella web/):
+    https://tuodominio.it/noddns/  → tabella agent → Assegna nome
+
+  PASSO 6 — Connetti
+  ------------------
+  Da client Linux/Windows/GUI:
+
+    nossh connect nome-macchina utente-windows
+
+  Dal pannello web admin: pulsante CONNETTI sulla riga della macchina.
+
+  Username = account Windows (es. sshuser)
+  Password = password di quell'account Windows
+
+================================================================================
+  UTENTE WINDOWS PER SSH
+================================================================================
+
+  Windows NON mostra le password in chiaro. Per SSH serve un account con
+  password nota.
+
+  Consigliato: crea un utente dedicato (es. sshuser) e lascia il tuo utente
+  principale com'e'.
+
+  Creare utente (Gestione computer → Utenti e gruppi locali → Utenti →
+  Nuovo utente), oppure Impostazioni → Account → Altri utenti.
+
+  Per test con privilegi admin: aggiungi l'utente al gruppo Amministratori
+  (Gestione computer → Gruppi → Amministratori → Aggiungi).
+
+  Al primo login SSH l'utente puo impiegare piu tempo (creazione profilo).
+
+================================================================================
+  OPENSSH SU WINDOWS
+================================================================================
+
+  Installazione automatica:
+    - Prima prova winget (Microsoft.OpenSSH.Beta) se disponibile
+    - Altrimenti Windows Capability (Add-WindowsCapability) — puo essere LENTA
+      (anche 10-15 minuti; i pallini di avanzamento sono normali)
+
+  Se Install-sshd.ps1 non e presente, l'installer crea sshd_config manualmente.
+
+  sshd ascolta solo su 127.0.0.1 — non raggiungibile dalla rete locale esterna.
+
+  PasswordAuthentication: yes — login con username/password Windows.
+
+  Shell predefinita SSH: cmd.exe (configurabile in documentazione Microsoft).
+
+  winget sul PC NON e richiesto per nossh/SSH. Serve solo all'installer per
+  installare OpenSSH (con fallback Capability). Dopo l'installazione puoi
+  installare winget/App Installer separatamente se ti serve per altro.
+
+================================================================================
+  DISINSTALLAZIONE / REINSTALLAZIONE PULITA
+================================================================================
+
+  PowerShell come Amministratore, nella cartella ESEGUIBILI:
+
+    cd C:\percorso\ESEGUIBILI
+
+    # Solo nossh-agent (veloce; OpenSSH resta installato):
+    powershell -ExecutionPolicy Bypass -File .\uninstall-agent.ps1
+
+    # Reset completo config OpenSSH dell'installer:
+    powershell -ExecutionPolicy Bypass -File .\uninstall-agent.ps1 -Full
+
+  Poi rilancia install-agent.bat come amministratore.
+
+  Comandi manuali equivalenti:
+
+    Stop-Service nossh-agent -ErrorAction SilentlyContinue
+    sc.exe delete nossh-agent
+    Remove-Item -Recurse -Force "C:\Program Files\nossh" -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force "C:\ProgramData\nossh" -ErrorAction SilentlyContinue
+
+================================================================================
+  VERIFICA DOPO INSTALLAZIONE
+================================================================================
+
+  Servizio agent (deve essere RUNNING):
+    sc query nossh-agent
+
+  Servizio SSH:
+    sc query sshd
+
+  Config agent:
+    type C:\ProgramData\nossh\agent.yaml
+
+  Stato agent:
+    "C:\Program Files\nossh\nossh-agent.exe" status
+
+  Log agent (se problemi):
+    type C:\ProgramData\nossh\agent.log
+
+  Test SSH locale (sul PC Windows, opzionale):
+    ssh utente@127.0.0.1
+
+  Test connessione al ponte (PowerShell):
+    Test-NetConnection IP-PONTE -Port 4443
+
+================================================================================
+  RISOLUZIONE PROBLEMI
+================================================================================
+
+  "Impossibile raggiungere ... (firewall o indirizzo errato)"
+    - Verifica IP e porta 4443 sul ponte
+    - Firewall VPS: porta 4443 aperta in ingresso
+    - Su VM (WinBoat, ecc.): verifica accesso internet in uscita
+
+  Installazione OpenSSH molto lenta
+    - Normale con Windows Capability; attendere fine pallini/avanzamento
+    - OpenSSH gia installato? La seconda installazione e veloce
+
+  Errore sshd_config non trovato
+    - Usa gli script install-openssh.ps1 aggiornati (creano config + Install-sshd)
+
+  Servizio nossh-agent non si avvia
+    - Usa nossh-agent.exe aggiornato (supporto servizio Windows integrato)
+    - Leggi C:\ProgramData\nossh\agent.log
+    - Verifica install_token corretto in server.yaml
+
+  Installazione "PARZIALE - CONTROLLA TOKEN"
+    - install_token in server.yaml deve coincidere con quello inserito
+    - Dopo correzione: uninstall-agent.ps1 poi install-agent.bat
+
+  SSH chiede password ma login fallisce
+    - L'account Windows deve avere una password (non vuota)
+    - Usa utente dedicato con password nota
+    - Username esatto (es. sshuser, non email Microsoft se account locale)
+
+  winget non riconosciuto dopo installazione SSH
+    - Normale su alcune VM; non blocca nossh
+    - Per installare winget: App Installer da Microsoft Store, oppure
+      aka.ms/getwinget (vedi documentazione Microsoft)
+
+  Agent compare pending sul ponte ma non active
+    - L'admin deve assegnare il nome (nossh name o pannello web)
+
+================================================================================
+  PERCORSI FILE SUL PC
+================================================================================
+
+    C:\Program Files\nossh\nossh-agent.exe     binario agent
+    C:\ProgramData\nossh\agent.yaml            configurazione agent
+    C:\ProgramData\nossh\agent.log             log agent (errori)
+    C:\ProgramData\ssh\sshd_config             config OpenSSH
+
+================================================================================
+  RICOMPILARE nossh-agent.exe (SOURCE_CODE)
+================================================================================
+
+  Da Linux con Go installato:
+
+    cd SOURCE_CODE
+    make agent
+
+  Output: ../ESEGUIBILI/nossh-agent.exe
+
+  Dalla root del repository nossh:
+
+    bash scripts/pack-windows-agent.sh
+
+  Dopo ricompilazione, copia ESEGUIBILI/ sul PC Windows.
+
+================================================================================
+  SICUREZZA
+================================================================================
+
+  - Non condividere install_token pubblicamente.
+  - Non committare token reali nei file di config.
+  - Usa password robuste sugli account SSH.
+  - Preferisci utente dedicato (non admin) in produzione.
+  - La porta 22 non e esposta su internet (solo 127.0.0.1 + tunnel ponte).
+  - Porta 4443 sul ponte: solo per agent in uscita, non aprire altro inutilmente.
+
+================================================================================
+  CHECKLIST FINALE
+================================================================================
+
+  [ ] nossh-server attivo sul ponte
+  [ ] install_token pronto
+  [ ] ESEGUIBILI copiata sul PC Windows
+  [ ] install-agent.bat eseguito come Amministratore
+  [ ] Messaggio INSTALLAZIONE COMPLETATA CON SUCCESSO
+  [ ] Codice agent annotato
+  [ ] Nome macchina assegnato (CLI o pannello web)
+  [ ] Utente Windows con password per SSH creato
+  [ ] nossh connect nome-macchina utente  oppure  CONNETTI nel pannello web
+  [ ] Login SSH riuscito (whoami, comandi test)
+
+================================================================================

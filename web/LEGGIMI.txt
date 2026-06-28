@@ -1,0 +1,397 @@
+================================================================================
+  Quelo Connect — Pannello admin web (PHP)
+================================================================================
+
+  Cartella pronta per il deploy: copia l'intera directory web/ sul server
+  ponte (lo stesso host dove gira nossh-server). Non serve altro codice PHP
+  esterno: tutto è contenuto qui (index, API client, terminale web, stili).
+
+  Funzioni:
+    - login con token admin
+    - elenco agent, assegna nome, rinomina, revoca, elimina
+    - pulsante CONNETTI → terminale SSH nel browser (username/password interattivi)
+
+  Esempio URL: https://tuodominio.it/noddns/
+
+================================================================================
+  IMPORTANTE — PREREQUISITO: nossh-server
+================================================================================
+
+  Questo pannello web NON e' un prodotto a se': e' solo l'interfaccia grafica
+  di amministrazione per un server ponte gia' installato e funzionante.
+
+  Prima di copiare la cartella web/ sul server DEVI aver installato e avviato
+  nossh-server (e aver configurato almeno un agent sulle macchine remote).
+
+  Per l'installazione completa del server ponte — binari, systemd, firewall,
+  token admin, registrazione agent, comandi CLI — fai riferimento al manuale
+  principale del progetto:
+
+       QueloConnection/LEGGIMI.txt
+
+  (nella release o nel repository nossh, cartella QueloConnection/)
+
+  In sintesi: senza nossh-server attivo su quell'host il pannello non puo'
+  funzionare (nessun agent da gestire, API su 127.0.0.1:8081 assente,
+  terminale CONNETTI non disponibile).
+
+================================================================================
+  PRIMA DI INIZIARE — COSA DEVE ESSERCI SUL SERVER
+================================================================================
+
+  Il pannello web va installato SUL SERVER PONTE (bridge), non sul PC client.
+  Sullo stesso host devono girare:
+
+    [A] nossh-server   (porte agent 4443, client 7000, admin 8081 solo localhost)
+    [B] Apache2        (sito HTTPS già funzionante)
+    [C] PHP 8.x        (modulo Apache + estensione curl)
+    [D] nossh          (client in /usr/local/bin/nossh, per il terminale web)
+
+  --- Controlli rapidi (esegui sul server ponte) ---
+
+  1) nossh-server attivo:
+
+       sudo systemctl status nossh-server
+
+     Deve essere "active (running)". Se manca:
+
+       sudo systemctl enable --now nossh-server
+
+  2) API admin risponde in locale (sostituisci TOKEN):
+
+       grep admin_token /etc/nossh/server.yaml
+       curl -s -o /dev/null -w "%{http_code}\n" \
+         -H "Authorization: Bearer IL_TUO_TOKEN" \
+         http://127.0.0.1:8081/api/agents
+
+     Risposta attesa: 200
+
+  3) Client nossh installato (serve per CONNETTI nel browser):
+
+       which nossh
+       nossh -h 2>&1 | head -1
+
+     Deve trovare /usr/local/bin/nossh (o altro path in PATH).
+     Se manca, compila e installa dal progetto nossh:
+
+       cd /percorso/nossh
+       make build
+       sudo install -m 755 bin/nossh-server bin/nossh-agent bin/nossh /usr/local/bin/
+       sudo systemctl restart nossh-server
+
+     nossh-server deve essere una versione con supporto WebSocket terminale
+     (endpoint /api/terminal/ws sulla porta admin 8081).
+
+  4) PHP installato:
+
+       php -v
+
+     Versione consigliata: PHP 8.1 o superiore.
+
+  5) Estensione PHP curl (obbligatoria):
+
+       php -m | grep curl
+
+     Se non compare, su Debian/Ubuntu:
+
+       sudo apt update
+       sudo apt install php-curl
+       sudo systemctl restart apache2
+
+  6) Moduli Apache necessari:
+
+       apache2ctl -M 2>/dev/null | grep -E 'proxy|ssl|rewrite|php'
+
+     Servono almeno:
+       ssl, rewrite, proxy, proxy_http, proxy_wstunnel, php8.x (o simile)
+
+     Se mancano proxy per il terminale web:
+
+       sudo a2enmod proxy proxy_http proxy_wstunnel
+       sudo systemctl reload apache2
+
+  7) HTTPS attivo sul dominio (Let's Encrypt o altro certificato).
+     Il pannello va usato solo su HTTPS (cookie di sessione secure).
+
+  8) Accesso Internet dal browser dell'utente per caricare xterm.js da CDN
+     (jsdelivr). Se il server è senza uscita web, segnalalo: serve hosting
+     locale degli asset JS (non incluso di default).
+
+================================================================================
+  INSTALLAZIONE PASSO-PASSO (Apache2, sotto-cartella)
+================================================================================
+
+  Adatta i nomi al tuo caso:
+    DOMINIO     = es. tuodominio.it
+    CARTELLA    = es. noddns          (nome sotto-cartella URL)
+    PERCORSO    = es. /var/www/SITO/noddns
+    UTENTE      = es. alby            (tuo utente Linux per i file)
+    GRUPPO-WEB  = www-data            (gruppo Apache/PHP su Debian)
+
+  URL finale: https://DOMINIO/CARTELLA/
+
+  --------------------------------------------------------------------------
+  PASSO 1 — Copia i file
+  --------------------------------------------------------------------------
+
+  Dalla macchina dove hai il sorgente:
+
+       scp -r web/* UTENTE@SERVER:PERCORSO/
+
+  Oppure sul server:
+
+       sudo mkdir -p PERCORSO
+       sudo cp -r web/* PERCORSO/
+
+  Verifica che ci siano almeno:
+       index.php
+       terminal-token.php
+       config.example.php
+       .htaccess
+       lib/   assets/   logs/   scripts/
+
+       ls -la PERCORSO/
+
+  --------------------------------------------------------------------------
+  PASSO 2 — Permessi (proprietario UTENTE, gruppo www-data)
+  --------------------------------------------------------------------------
+
+       cd PERCORSO
+       sudo chown -R UTENTE:www-data .
+       sudo find . -type d -exec chmod 2750 {} \;
+       sudo find . -type f -exec chmod 640 {} \;
+       sudo chmod 2770 logs
+
+  Oppure con lo script incluso:
+
+       sudo bash scripts/fix-permissions.sh PERCORSO
+
+  Controlla:
+
+       ls -la PERCORSO
+       ls -la PERCORSO/logs
+
+  Tutti i file devono mostrare UTENTE www-data.
+
+  --------------------------------------------------------------------------
+  PASSO 3 — Crea config.php
+  --------------------------------------------------------------------------
+
+       cd PERCORSO
+       cp config.example.php config.php
+       nano config.php
+
+  Imposta:
+
+       'api_url'     => 'http://127.0.0.1:8081',
+       'admin_token' => '...',        // uguale a admin_token in /etc/nossh/server.yaml
+       'base_path'   => '/CARTELLA',  // es. '/noddns' — senza slash finale
+       'debug'       => true,         // false quando tutto funziona
+
+  Il token si legge con:
+
+       grep admin_token /etc/nossh/server.yaml
+
+  Permessi su config.php:
+
+       sudo chown UTENTE:www-data config.php
+       sudo chmod 640 config.php
+
+  .htaccess blocca l'accesso HTTP diretto a config.php (Require all denied).
+
+  --------------------------------------------------------------------------
+  PASSO 4 — Verifica che PHP serva la cartella
+  --------------------------------------------------------------------------
+
+  Se PERCORSO è dentro il DocumentRoot del sito (es. /var/www/SITO/noddns
+  con DocumentRoot /var/www/SITO), Apache la serve già come sotto-cartella.
+
+  Prova:
+
+       curl -Ik https://DOMINIO/CARTELLA/
+
+  Risposta attesa: HTTP/1.1 200 OK
+  Nel header Set-Cookie deve comparire path=/CARTELLA/
+
+  Se ottieni 404, controlla DocumentRoot e che la cartella sia nel posto giusto.
+
+  --------------------------------------------------------------------------
+  PASSO 5 — Apache: proxy WebSocket per il terminale CONNETTI
+  --------------------------------------------------------------------------
+
+  Il terminale nel browser usa WebSocket verso nossh-server (porta 8081 locale).
+  Apache deve inoltrare /CARTELLA/ws/terminal → ws://127.0.0.1:8081/api/terminal/ws
+
+  5a) Abilita moduli (una tantum):
+
+       sudo a2enmod proxy proxy_http proxy_wstunnel
+       sudo systemctl reload apache2
+
+  5b) Modifica il VirtualHost HTTPS (porta 443), NON quello HTTP :80.
+
+       sudo nano /etc/apache2/sites-available/TUO-SITO-le-ssl.conf
+
+  Dentro <VirtualHost *:443>, prima della chiusura </VirtualHost>, aggiungi
+  (sostituisci CARTELLA con il nome reale, es. noddns):
+
+       ProxyPreserveHost On
+       ProxyPass /CARTELLA/ws/terminal ws://127.0.0.1:8081/api/terminal/ws
+       ProxyPassReverse /CARTELLA/ws/terminal ws://127.0.0.1:8081/api/terminal/ws
+
+  Esempio concreto (sostituisci con i tuoi valori):
+
+       ProxyPreserveHost On
+       ProxyPass /noddns/ws/terminal ws://127.0.0.1:8081/api/terminal/ws
+       ProxyPassReverse /noddns/ws/terminal ws://127.0.0.1:8081/api/terminal/ws
+
+  5c) Verifica e ricarica:
+
+       sudo apache2ctl configtest
+       sudo systemctl reload apache2
+
+  Deve uscire: Syntax OK
+
+  --------------------------------------------------------------------------
+  PASSO 6 — Prova nel browser
+  --------------------------------------------------------------------------
+
+  1. Apri https://DOMINIO/CARTELLA/
+  2. Accedi con il token admin
+  3. Verifica la tabella agent
+  4. Su una macchina active + online clicca CONNETTI
+  5. Nel terminale sotto la riga: inserisci username SSH, poi password
+
+  Con debug => true in fondo alla pagina compare il pannello diagnostico.
+
+  --------------------------------------------------------------------------
+  PASSO 7 — Produzione (quando tutto ok)
+  --------------------------------------------------------------------------
+
+  In config.php:
+
+       'debug' => false,
+
+  Non committare config.php con il token reale nel repository git.
+
+================================================================================
+  STRUTTURA CARTELLA web/ (deploy)
+================================================================================
+
+  web/
+    index.php              pagina principale (login + tabella agent)
+    terminal-token.php     API interna: token firmato per WebSocket terminale
+    config.example.php     modello configurazione (copia in config.php)
+    .htaccess              protegge config, DirectoryIndex index.php
+    LEGGIMI.txt            questo file
+    assets/
+      style.css            stili pannello e terminale
+      terminal.js          client xterm.js + WebSocket
+    lib/
+      bootstrap.php        sessioni, CSRF, URL sotto-cartella
+      NosshAdmin.php       client HTTP verso API admin
+      terminal.php         firma token terminale
+      debug.php            log e errori (se debug=true)
+    logs/
+      .htaccess            nega accesso web ai log
+      debug.log            creato automaticamente se debug=true
+      php-errors.log       errori PHP
+    scripts/
+      fix-permissions.sh   script permessi UTENTE:www-data
+
+  File creati sul server (non nel pacchetto sorgente):
+    config.php             configurazione locale (token, base_path, debug)
+
+================================================================================
+  CONFIGURAZIONE config.php — RIEPILOGO
+================================================================================
+
+  api_url      URL API admin nossh-server (solo localhost sul ponte).
+               Default: http://127.0.0.1:8081
+
+  admin_token  Stesso valore di admin_token in /etc/nossh/server.yaml.
+               Alternativa: variabile d'ambiente NOSSH_ADMIN_TOKEN per PHP.
+
+  base_path    Percorso URL della sotto-cartella, es. '/noddns'.
+               Lascia '' per rilevamento automatico da SCRIPT_NAME.
+
+  app_name     Titolo mostrato in pagina.
+
+  debug        true = errori visibili + pannello debug + log in logs/.
+               false = uso normale in produzione.
+
+================================================================================
+  RISOLUZIONE PROBLEMI
+================================================================================
+
+  Pagina bianca o errore 500
+    - sudo tail -30 /var/log/apache2/error.log
+    - controlla PERCORSO/logs/php-errors.log
+    - php -l PERCORSO/index.php
+
+  "Token rifiutato" al login
+    - token in config.php = admin_token in /etc/nossh/server.yaml
+    - curl test API (vedi sezione controlli sopra)
+
+  Tabella agent vuota / errore API
+    - sudo systemctl status nossh-server
+    - ss -tlnp | grep 8081
+    - API deve ascoltare solo 127.0.0.1:8081 (non esporla su internet)
+
+  CONNETTI: "Errore WebSocket"
+    - moduli proxy_wstunnel abilitati?
+    - ProxyPass nel VirtualHost :443 (SSL), non :80
+    - base_path in config.php = nome cartella URL (/noddns)
+    - sudo tail -20 /var/log/apache2/error.log
+
+  CONNETTI: si apre ma chiude subito
+    - which nossh  (deve esistere)
+    - journalctl -u nossh-server -n 30
+    - macchina deve essere active + online
+
+  Permessi: log non scrivibili
+    - sudo chown UTENTE:www-data logs
+    - sudo chmod 2770 logs
+
+  CSS/JS non caricati
+    - base_path corretto in config.php
+    - curl -I https://DOMINIO/CARTELLA/assets/style.css  → 200
+
+================================================================================
+  SICUREZZA
+================================================================================
+
+  - Porta 8081 (API admin) e terminale WebSocket: solo localhost, mai su firewall.
+  - Porte 4443 e 7000: necessarie per agent e client SSH (già sul ponte).
+  - Usa sempre HTTPS per il pannello.
+  - Non pubblicare l'URL admin; valuta IP allowlist in Apache se serve.
+  - config.php: permessi 640, proprietario UTENTE:www-data.
+  - Disattiva debug in produzione (debug => false).
+
+================================================================================
+  EQUIVALENZA CLI (sul server ponte)
+================================================================================
+
+    export NOSSH_ADMIN_TOKEN=...    # come in server.yaml
+    nossh list
+    nossh name CODICE nome-macchina
+    nossh connect nome-macchina     # stesso flusso SSH del pulsante CONNETTI
+
+================================================================================
+  CHECKLIST FINALE
+================================================================================
+
+  [ ] nossh-server active (running)
+  [ ] nossh in /usr/local/bin
+  [ ] curl API 127.0.0.1:8081 → 200
+  [ ] php -v OK, php -m | grep curl
+  [ ] moduli Apache proxy + ssl OK
+  [ ] file web/ copiati in PERCORSO
+  [ ] permessi UTENTE:www-data
+  [ ] config.php con base_path e admin_token
+  [ ] curl -Ik https://DOMINIO/CARTELLA/ → 200
+  [ ] ProxyPass WebSocket nel vhost SSL
+  [ ] login browser OK
+  [ ] CONNETTI → SSH interattivo OK
+  [ ] debug => false in produzione
+
+================================================================================

@@ -1,0 +1,50 @@
+================================================================================
+  nossh — Sorgente client Windows (portable)
+================================================================================
+
+  Compila nossh.exe per Windows da Linux (cross-compile) o da Windows con Go.
+
+
+================================================================================
+  REQUISITI
+================================================================================
+
+  - Go 1.22+
+  - Nessuna dipendenza CGO per il solo client
+
+
+================================================================================
+  COMPILAZIONE (da Linux)
+================================================================================
+
+  cd windows/SOURCE_CODE
+  make build
+
+  Output: ../dist/nossh.exe
+
+  Oppure dalla root del repo:
+
+    bash scripts/pack-windows.sh
+
+
+================================================================================
+  STRUTTURA
+================================================================================
+
+  cmd/nossh/           CLI client (connect, proxy, comandi admin)
+  internal/client/     Logica SSH + ProxyCommand + modalita' portable
+  internal/...         Dipendenze admin (opzionale sul client)
+
+  Modalita' portable: se client.conf e' nella stessa cartella di nossh.exe,
+  known_hosts va in .nossh\ accanto all'eseguibile.
+
+  GUI Windows: cmd/quelo-connect-gui-win/ (Fyne, icona Quelo embedded)
+
+
+================================================================================
+  LICENZA
+================================================================================
+
+  Alberto Frosio — alby@gnumerica.org
+
+================================================================================

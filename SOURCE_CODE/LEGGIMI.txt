@@ -1,0 +1,102 @@
+================================================================================
+  nossh — Codice sorgente e compilazione
+================================================================================
+
+  Autore:  Alberto Frosio
+  Email:   alby@gnumerica.org
+  Licenza: Uso libero NON commerciale (vedi LICENSE)
+
+
+================================================================================
+  REQUISITI PER COMPILARE
+================================================================================
+
+  - Go 1.22 o superiore  (https://go.dev/dl/)
+  - make
+  - Linux amd64 o arm64 per i binari finali
+
+  Verifica:
+
+    go version
+    make --version
+
+
+================================================================================
+  COMPILAZIONE
+================================================================================
+
+  Dalla root di SOURCE_CODE:
+
+    go mod tidy
+    make build
+
+  Binari generati in bin/:
+
+    nossh-server    daemon server ponte
+    nossh-agent     daemon macchina remota
+    nossh           client + comandi admin
+
+
+================================================================================
+  INSTALLAZIONE
+================================================================================
+
+  Server ponte:
+
+    sudo bash scripts/install-server.sh
+    sudo nano /etc/nossh/server.yaml
+    sudo systemctl enable --now nossh-server
+
+  Agent macchina remota:
+
+    sudo bash scripts/install-agent.sh --server HOST:4443 --token TOKEN
+
+  Client utente finale:
+
+    bash scripts/install-client.sh --server HOST:7000 --machine NOME
+
+
+================================================================================
+  PACCHETTO CLIENT ZIP
+================================================================================
+
+    make build
+    bash scripts/pack-client.sh --server IP:7000 --machine NOME-MACCHINA
+
+  Output: dist/nossh-client.zip
+
+
+================================================================================
+  GUI GTK (.deb)
+================================================================================
+
+    sudo apt install libgtk-3-dev gcc pkg-config
+    make gui-deb
+
+  Output: dist/quelo-connect-gui_0.1.0-beta_amd64.deb
+
+  Sorgente GUI dedicata:  Gui/LEGGIMI.txt
+
+
+================================================================================
+  STRUTTURA PROGETTO
+================================================================================
+
+  cmd/           Binari (server, agent, client, quelo-connect-gui)
+  internal/      Logica applicativa
+  deploy/        Config esempio e systemd
+  scripts/       Installazione e release
+  packaging/     Metadati pacchetto GUI .deb
+  Gui/           Sorgente ridotta solo per quelo-connect-gui (vedi Gui/LEGGIMI.txt)
+  go.mod         Dipendenze Go
+
+
+================================================================================
+  LICENZA
+================================================================================
+
+  Uso libero NON commerciale. Uso commerciale vietato senza autorizzazione.
+
+  Alberto Frosio — alby@gnumerica.org
+
+================================================================================

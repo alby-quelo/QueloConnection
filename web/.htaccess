@@ -1,0 +1,6 @@
+# Blocca accesso diretto a config e file sensibili
+<FilesMatch "^(config\.php|config\.example\.php)$">
+    Require all denied
+</FilesMatch>
+
+DirectoryIndex index.php

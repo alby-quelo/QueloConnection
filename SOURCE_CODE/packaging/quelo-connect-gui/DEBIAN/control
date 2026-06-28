@@ -1,0 +1,14 @@
+Package: quelo-connect-gui
+Version: 0.1.0-beta
+Section: net
+Priority: optional
+Architecture: amd64
+Maintainer: Alberto Frosio <alby@gnumerica.org>
+Depends: libgtk-3-0 (>= 3.22), libc6 (>= 2.31), openssh-client
+Recommends: xdg-terminal-exec | gnome-terminal | konsole | xfce4-terminal | xterm
+Description: Mini finestra GTK per connessioni nossh
+ Applicazione grafica leggera che si appoggia al client nossh già installato.
+ Legge ~/.config/nossh/client.conf e apre il terminale di sistema con la
+ sessione SSH verso la macchina remota configurata.
+ .
+ Richiede nossh nel PATH (installato con install-client.sh).
