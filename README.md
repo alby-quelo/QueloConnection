@@ -1,5 +1,7 @@
 # Quelo Connect (nossh)
 
+**English** · **[Italiano](README.it.md)**
+
 **Outbound SSH bridge for machines without a public IP.**
 
 Quelo Connect lets you reach Linux and Windows hosts over SSH without opening inbound port 22 on remote networks and without a public IP on each machine. Remote **agents** connect *out* to a central **bridge server**; **clients** and an optional **web admin panel** connect *in* to the bridge.
